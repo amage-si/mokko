@@ -36,6 +36,7 @@ rasterized by Dithra, and composed by Chromi in an Ankra window.
 - `Semantic{id, role, label, bounds, enabled, focused, pressed, actions}` for
   each control, with an `Activate` action on enabled buttons. Auvia publishes
   these over AT-SPI.
+- `anim.bend`: animated transitions (see below).
 - `demo.bend`: a pure counter model (title, button, status) laid out by Tessra
   from real Syllo measurements, updated by Kairo, that redraws only when needed.
 - `visual.bend`: the window host for that model, using Ankra, Chromi, the text
@@ -58,6 +59,34 @@ character, such as `Character U+2615 cannot be displayed`. Space and Enter
 never activate a field. The image above was painted without a window by
 `examples/field_render.bend`, with Chromi, Dithra, and Liberation Sans.
 
+### Animated transitions
+
+![Filmstrip: a hover fade, a hover reversed at 60 ms, a press and release, and a field's focus ring growing in, six frames each.](docs/anim-filmstrip.png)
+
+`anim.bend` animates the button and the field with
+[Kinera](https://github.com/amage-si/kinera) springs and tweens and Chromi's
+OKLab colour mixing. The host keeps a `ButtonAnim` or `FieldAnim` per control
+and, per frame at time `now`, steps it with Kairo's state, draws with
+`button`/`field_view`, and asks `button_deadline`/`field_deadline` when to
+draw next; `None` means nothing moves, so idle needs no frames.
+
+- The button fill fades between normal, hover and pressed colours in OKLab;
+  a hover-out during the hover-in turns back from the current value and
+  velocity, with no jump.
+- A press darkens the fill and sinks it by 1 unit in 70 ms; release springs
+  back.
+- The focus ring of the button and the field fades in while it grows from
+  6 to 2 units inside the bounds (150 ms); the field border fades to the
+  error colour when an edit is refused.
+- The caret holds solid for 500 ms after an edit, then blinks with 150 ms
+  fades in a 1 s cycle, frames only during the fades; after ten cycles it
+  stays solid. Blink is optional, and an unfocused window stops it.
+- `Prefs.reduce` makes every transition instant and the caret solid.
+
+A frame of the demo's button and field (steps, views, deadline) costs about
+1.3 µs. The filmstrip above was painted without a window by
+`examples/anim_render.bend`. The transitions are not yet in a window demo.
+
 Verification on the development machine:
 
 - **14 native checks** of primitives, state colors, text placement, focus,
@@ -72,6 +101,13 @@ Verification on the development machine:
   primitive order, scrolling that keeps the caret visible (also after Home,
   End, a click on scrolled text, and deleting everything), and Space and
   Enter never activating the field.
+- **22 transition checks** (`anim_tests.bend`, real font): the colour
+  midway through a hover fade equals `mix_oklab` at Kinera's value, a
+  mid-fade reversal keeps value, velocity and colour, deadlines stop once
+  settled, reduce motion is instant, the press sink and release, the ring's
+  inset and alpha, the caret blink cycle, its restart on typing, its stop
+  (timeout, blink off, unfocused window), the border's OKLab fade, and the
+  same primitive order as the static views.
 - **Window run:** the final demo binary was driven once with 31 synthetic X11
   events sent only to its window, and all 31 arrived. It started at 0; a press
   dragged outside kept 0; a click gave 1; Tab showed the focus ring; Space with
@@ -90,7 +126,8 @@ names, because Bend imports are case-sensitive relative paths (`../Kairo/...`).
 | --- | --- |
 | `main.bend`, `tests.bend`, `examples/button.bend` | Tessra, Kairo |
 | `demo.bend`, `demo_tests.bend`, `field.bend`, `field_tests.bend`, `examples/field*.bend` | + Syllo, Runika, Splina (Runika imports Splina) |
-| `visual.bend` (window demo), `examples/field_render.bend` | + Chromi, Dithra (and Ankra for the window) |
+| `anim.bend`, `anim_tests.bend`, `examples/anim_bench.bend` | + Kinera, Chromi |
+| `visual.bend` (window demo), `examples/field_render.bend`, `examples/anim_render.bend` | + Chromi, Dithra (and Ankra for the window) |
 
 ```sh
 for repo in tessra kairo mokko; do
@@ -146,6 +183,9 @@ refused paste, Home, Shift+Ctrl+Right, copy, a drag, cut, paste) and prints
 the field after every step and the final primitives.
 `examples/field_render.bend` writes `build/field-render.ppm` (the image
 above), and `examples/field_bench.bend` times `feed` and `view`.
+`anim_tests.bend` checks the transitions, `examples/anim_render.bend` writes
+the filmstrip to `build/anim-render.ppm`, and `examples/anim_bench.bend` times
+a frame and prints how long each transition asks for frames.
 
 Click the button, or use Tab, Space, and Enter. Close the window normally to
 exit; it also closes after 18,000 polls.
@@ -162,6 +202,13 @@ field(font, size, text)                         -> Result<&2, &2, String, Field>
 feed(font, size, bounds, id, field, action)     -> Fed{field, dirty, request}
 view(node, state, field, size, theme, placeholder) -> Result<&2, &2, String, FieldView>
 FieldView{view: View, edit: EditState}
+
+# anim.bend, per frame at `now`
+button_step(anim, prefs, state, id, now)        -> ButtonAnim
+field_step(anim, prefs, state, id, field, now)  -> FieldAnim
+button(node, state, metrics, size, theme, anim, now) -> Result<&2, &2, String, View>
+field_view(node, state, field, size, theme, placeholder, anim, prefs, now) -> Result<&2, &2, String, FieldView>
+sooner(now, button_deadline(anim, now, frame_ms), field_deadline(anim, prefs, now, frame_ms)) -> Maybe<&2, U32>
 ```
 
 Primitives are drawn in list order:
@@ -189,7 +236,7 @@ range, not that they match the text. Read the [API reference](docs/api.md).
   common symbols, up to 256 scalars by default. Other characters (`☕`, emoji,
   Hebrew, Arabic, CJK, a currency sign the font lacks such as `₹`) are refused
   with a message. There is no IME
-  preedit, no caret blink, and no undo. Text reaches it only through Kairo's
+  preedit and no undo; the caret blinks only through `anim.bend`. Text reaches it only through Kairo's
   `TextInput`; the keyboard and clipboard come from the host.
 - The field is not in a window demo yet: the counter window does not host
   it. It was checked with native tests, a scripted session, and an offline
@@ -221,18 +268,23 @@ The Bend checker and these tests are not a formal proof of the ecosystem.
 | [chromi_text.bend](chromi_text.bend) | Text adapter for the host: Syllo layout, Dithra masks, Chromi blending. |
 | [field.bend](field.bend) | The single-line text field: `field`, `feed`, `view`, node and size helpers. |
 | [field_tests.bend](field_tests.bend) | Text-field checks with the real font; no display needed. |
+| [anim.bend](anim.bend) | Animated transitions: `ButtonAnim`, `FieldAnim`, steps, animated views, deadlines. |
+| [anim_tests.bend](anim_tests.bend) | Transition checks with the real font; no display needed. |
 | [tests.bend](tests.bend) | Native component checks; no display or font needed. |
 | [demo_tests.bend](demo_tests.bend) | Model checks with the real font; no display needed. |
 | [examples/button.bend](examples/button.bend) | One button's primitives and semantics, idle and focused. |
 | [examples/field.bend](examples/field.bend) | A scripted text-field session, printed step by step. |
 | [examples/field_render.bend](examples/field_render.bend) | Five text-field states painted by Chromi to a PPM, without a window. |
 | [examples/field_bench.bend](examples/field_bench.bend) | Times `feed` and `view` on a 256-scalar line. |
+| [examples/anim_render.bend](examples/anim_render.bend) | The transitions filmstrip painted by Chromi to a PPM, without a window. |
+| [examples/anim_bench.bend](examples/anim_bench.bend) | Times a frame of animated controls and how long each transition runs. |
 | [docs/](docs/) | API reference and validation history. |
 
 ## Dependencies
 
 Tessra and Kairo for the button and text; plus Syllo, Runika, and Splina for
-the text field and the demo model; Chromi, Dithra, and Ankra for the window host; all beside Mokko. Also
+the text field and the demo model; Kinera and Chromi's `mix.bend` for the
+transitions; Chromi, Dithra, and Ankra for the window host; all beside Mokko. Also
 the Bend 2 toolchain with its `Base` library, X11/XWayland for the window, and
 the Liberation Sans font file. There is no hand-written native code and no
 FreeType, HarfBuzz, Skia, GTK, or SDL.

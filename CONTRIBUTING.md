@@ -29,7 +29,12 @@ bend field_tests.bend -o build/field_tests
 ./build/field_tests --threads 2 --gpu off
 bend examples/field.bend -o build/field
 ./build/field --threads 2 --gpu off
+bend anim_tests.bend -o build/anim_tests
+./build/anim_tests --threads 2 --gpu off
 ```
+
+The transitions also need Kinera beside Mokko. `examples/anim_render.bend`
+writes `build/anim-render.ppm`; look at it after changing a transition.
 
 When a change affects visible behavior, run `./build/visual --threads 2 --gpu off`
 in an X11/XWayland session. Check hover, press, release outside, click, Tab,
