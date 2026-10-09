@@ -62,18 +62,18 @@ def due(m: Maybe<&2, U32>) -> F32:
 
 def frame(+s: Scene, +now: U32) -> F32:
   Scene{+hov, out, b, +focused, +field, fa, m} = s
-  +b2 = A.button_step(b, A.prefs(), hov, 2, now)
+  +b2 = A.button_step(b, A.prefs(), M.theme(), hov, 2, now)
   +f2 = A.field_step(fa, A.prefs(), focused, 1, field, now)
   (bg(A.button(button_node(), hov, m, 18.0, M.theme(), b2, now)) + border(A.field_view(field_node(), focused, field, 20.0, FL.field_theme(), "Type here", f2, A.prefs(), now))
     + due(A.sooner(now, A.button_deadline(b2, now, 8), A.field_deadline(f2, A.prefs(), now, 8))) : F32)
 
 def button_step(+s: Scene, +now: U32) -> F32:
   Scene{hov, out, b, focused, field, fa, m} = s
-  due(A.button_deadline(A.button_step(b, A.prefs(), hov, 2, now), now, 0))
+  due(A.button_deadline(A.button_step(b, A.prefs(), M.theme(), hov, 2, now), now, 0))
 
 def button_retarget(+s: Scene, +now: U32) -> F32:
   Scene{hov, out, b, focused, field, fa, m} = s
-  due(A.button_deadline(A.button_step(b, A.prefs(), Bool.pick(K.State, U32.is_eq((now .&. 1 : U32), 0), hov, out), 2, now), now, 0))
+  due(A.button_deadline(A.button_step(b, A.prefs(), M.theme(), Bool.pick(K.State, U32.is_eq((now .&. 1 : U32), 0), hov, out), 2, now), now, 0))
 
 def button_view(+s: Scene, +now: U32) -> F32:
   Scene{hov, out, b, focused, field, fa, m} = s
@@ -164,13 +164,13 @@ def field_for(+p: A.Prefs, +a: A.FieldAnim, +now: U32) -> U32:
 
 def run(+s: Scene, +down: K.State, +up: K.State) -> IO(Unit):
   Scene{+hov, +out, +b, +focused, +field, fa, m} = s
-  +rested = A.button_step(A.button_anim(), A.prefs(), hov, 2, 0)
-  +pressed = A.button_step(rested, A.prefs(), down, 2, 1000)
+  +rested = A.button_step(A.button_anim(), A.prefs(), M.theme(), hov, 2, 0)
+  +pressed = A.button_step(rested, A.prefs(), M.theme(), down, 2, 1000)
   do IO<Unit>:
     IO.print("hover-in asks for frames for " ++ U32.show(button_for(b, 1000)) ++ " ms")
-    IO.print("hover-out at 60 ms: " ++ U32.show(button_for(A.button_step(b, A.prefs(), out, 2, 1060), 1060)) ++ " ms more")
+    IO.print("hover-out at 60 ms: " ++ U32.show(button_for(A.button_step(b, A.prefs(), M.theme(), out, 2, 1060), 1060)) ++ " ms more")
     IO.print("press asks for frames for " ++ U32.show(button_for(pressed, 1000)) ++ " ms")
-    IO.print("release after 100 ms: " ++ U32.show(button_for(A.button_step(pressed, A.prefs(), up, 2, 1100), 1100)) ++ " ms")
+    IO.print("release after 100 ms: " ++ U32.show(button_for(A.button_step(pressed, A.prefs(), M.theme(), up, 2, 1100), 1100)) ++ " ms")
     IO.print("focus ring asks for frames for " ++ U32.show(field_for(A.Prefs{False{}, False{}}, A.field_step(A.field_anim(), A.Prefs{False{}, False{}}, focused, 1, field, 1000), 1000)) ++ " ms (blink off)")
     IO.print("focused field with blink idles after " ++ U32.show(field_for(A.prefs(), fa, 1000)) ++ " ms")
     measure("empty loop", Idle{}, s)
@@ -191,7 +191,7 @@ def scened(r: Result<&2, &2, String, FL.Field>) -> IO(Unit):
       +hov = KM.replay([K.PointerMove{60.0, 100.0}], s0)
       +out = KM.replay([K.PointerMove{300.0, 190.0}], hov)
       +focused = KM.replay([K.PointerDown{100.0, 40.0, 0}, K.PointerUp{100.0, 40.0, 0}, K.PointerMove{60.0, 100.0}], s0)
-      run(Scene{hov, out, A.button_step(A.button_anim(), A.prefs(), hov, 2, 1000), focused, field, A.field_step(A.field_anim(), A.prefs(), focused, 1, field, 1000), M.Metrics{20.0, 20.0, 16.0}},
+      run(Scene{hov, out, A.button_step(A.button_anim(), A.prefs(), M.theme(), hov, 2, 1000), focused, field, A.field_step(A.field_anim(), A.prefs(), focused, 1, field, 1000), M.Metrics{20.0, 20.0, 16.0}},
         KM.replay([K.PointerDown{60.0, 100.0, 0}], hov), KM.replay([K.PointerDown{60.0, 100.0, 0}, K.PointerUp{60.0, 100.0, 0}], hov))
 
 def loaded(r: Result<&2, &2, String, F.Font>) -> IO(Unit):

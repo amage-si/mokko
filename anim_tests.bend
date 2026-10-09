@@ -218,7 +218,7 @@ def main() -> IO(Unit):
     +empty : FL.Field <- C.unwrap(FL.Field, FL.field(font, 20.0, ""))
     +hov : K.State = KM.replay([K.PointerMove{60.0, 100.0}], s0)
     +out : K.State = KM.replay([K.PointerMove{300.0, 190.0}], hov)
-    +b1 : A.ButtonAnim = A.button_step(A.button_anim(), on(), hov, 2, 1000)
+    +b1 : A.ButtonAnim = A.button_step(A.button_anim(), on(), M.theme(), hov, 2, 1000)
     +v60 : F32 = KN.value(hover_of(b1), 1060)
     C.expect(between(v60, 0.3, 0.97) && U32.is_eq(bg(button_at(hov, b1, 1060)), CM.mix_oklab(610062079, 829482751, v60)),
       "60 ms into a hover the fill is mix_oklab(normal, hover) at Kinera's value")
@@ -226,31 +226,36 @@ def main() -> IO(Unit):
       "the hover fade starts at the normal colour and lands exactly on the hover colour")
     C.expect(due(A.button_deadline(b1, 1060, 8), 1068) && idle(A.button_deadline(b1, 1300, 8)) && Bool.not(A.button_animating(b1, 1300)),
       "a frame is due while the hover moves; none once it settled (240 ms)")
-    +b2 : A.ButtonAnim = A.button_step(b1, on(), out, 2, 1060)
+    C.expect(Bool.not(idle(A.button_deadline(b1, 1180, 8))) && U32.is_eq(bg(button_at(hov, b1, 1190)), 829482751) && idle(A.button_deadline(b1, 1200, 8)),
+      "the hover rests once no colour byte can change: ~195 ms, the frame before already shows the hover colour")
+    +b2 : A.ButtonAnim = A.button_step(b1, on(), M.theme(), out, 2, 1060)
     C.expect(close(KN.value(hover_of(b2), 1060), v60, 0.000001) && close(KN.velocity(hover_of(b2), 1060), KN.velocity(hover_of(b1), 1060), 0.001)
       && U32.is_eq(bg(button_at(out, b2, 1060)), bg(button_at(hov, b1, 1060))),
       "hover-out mid-fade keeps the value, the velocity and the colour")
     C.expect(close(KN.value(hover_of(b2), 1068), KN.value(hover_of(b2), 1060), 0.05) && F32.is_lt(KN.value(hover_of(b2), 1150), v60)
       && U32.is_eq(bg(button_at(out, b2, 1400)), 610062079) && idle(A.button_deadline(b2, 1400, 8)),
       "the reversal moves on without a jump and returns to the normal colour, then idles")
-    C.expect(U32.is_eq(bg(button_at(hov, A.button_step(b1, on(), hov, 2, 1060), 1060)), bg(button_at(hov, b1, 1060))),
+    C.expect(U32.is_eq(bg(button_at(hov, A.button_step(b1, on(), M.theme(), hov, 2, 1060), 1060)), bg(button_at(hov, b1, 1060))),
       "stepping again with the same state changes nothing")
-    +br : A.ButtonAnim = A.button_step(A.button_anim(), reduce(), hov, 2, 1000)
+    +br : A.ButtonAnim = A.button_step(A.button_anim(), reduce(), M.theme(), hov, 2, 1000)
     C.expect(U32.is_eq(bg(button_at(hov, br, 1000)), 829482751) && idle(A.button_deadline(br, 1000, 8)),
       "reduce motion: the hover colour at once, no frames")
-    +settled : A.ButtonAnim = A.button_step(b1, on(), hov, 2, 3000)
+    +settled : A.ButtonAnim = A.button_step(b1, on(), M.theme(), hov, 2, 3000)
     +down : K.State = KM.replay([K.PointerDown{60.0, 100.0, 0}], hov)
-    +bp : A.ButtonAnim = A.button_step(settled, on(), down, 2, 3000)
+    +bp : A.ButtonAnim = A.button_step(settled, on(), M.theme(), down, 2, 3000)
     C.expect(between(fill_x(button_at(down, bp, 3030)), 20.0, 21.0) && F32.is_eq(fill_x(button_at(down, bp, 3070)), 21.0)
       && U32.is_eq(bg(button_at(down, bp, 3070)), 406820607),
       "a press sinks the fill by 1 unit in 70 ms and darkens it to the pressed colour")
     +up : K.State = KM.replay([K.PointerUp{60.0, 100.0, 0}], down)
-    +bu : A.ButtonAnim = A.button_step(bp, on(), up, 2, 3100)
+    +bu : A.ButtonAnim = A.button_step(bp, on(), M.theme(), up, 2, 3100)
     C.expect(between(fill_x(button_at(up, bu, 3150)), 20.0, 21.0) && F32.is_eq(fill_x(button_at(up, bu, 4000)), 20.0)
       && U32.is_eq(bg(button_at(up, bu, 4000)), 829482751) && idle(A.button_deadline(bu, 4000, 8)),
       "release springs back to the hover look, then idles")
+    C.expect(Bool.not(idle(A.button_deadline(bu, 3160, 8))) && idle(A.button_deadline(bu, 3270, 8)) && F32.is_eq(fill_x(button_at(up, bu, 3270)), 20.0)
+      && U32.is_eq(bg(button_at(up, bu, 3270)), 829482751),
+      "release idles as it passes 0 (~166 ms): its overshoot below 0 is clamped away and comes back by 0.05%")
     +tabbed : K.State = KM.replay([K.KeyDown{K.TabKey{}, False{}, False{}}, K.KeyDown{K.TabKey{}, False{}, False{}}], s0)
-    +bf : A.ButtonAnim = A.button_step(A.button_anim(), on(), tabbed, 2, 1000)
+    +bf : A.ButtonAnim = A.button_step(A.button_anim(), on(), M.theme(), tabbed, 2, 1000)
     C.expect(String.eq(kinds(button_at(tabbed, bf, 1075)), "FST") && String.eq(kinds(button_at(tabbed, bf, 1200)), kinds(static_button(tabbed)))
       && String.eq(kinds(button_at(s0, A.button_anim(), 1000)), kinds(static_button(s0))),
       "button primitive order: fill, focus ring, label, as the static button")
@@ -298,4 +303,4 @@ def main() -> IO(Unit):
     C.expect(between(ev, 0.0, 1.0) && U32.is_eq(border(prims(field_at(refused, fe, on(), 3060))), CM.mix_oklab(1247111423, 4031927039, ev))
       && U32.is_eq(border(prims(field_at(refused, fe, on(), 3150))), 4031927039),
       "a refused edit fades the border to the error colour in OKLab in 150 ms")
-    IO.print("Mokko anim: 22 tests passed")
+    IO.print("Mokko anim: 24 tests passed")

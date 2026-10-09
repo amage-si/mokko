@@ -9,6 +9,18 @@ sibling AMAGE libraries; the set of versions tested together is listed in
 
 ## [Unreleased]
 
+### Changed
+
+- `anim.bend`: springs rest once no byte of what they draw can change.
+  The rest is derived from the theme (`button_step` takes it: `button_step(anim,
+  prefs, theme, state, id, now)`): half a colour step over the steepest byte
+  change per unit at either end of the OKLab mix, or a quarter unit of the
+  sink, through Kinera's `with_rest`, instead of a fixed 0.004. A spring that
+  has passed its target at 0 or 1 (drawn clamped there) rests as soon as its
+  way back is below that. The demo's hover asks for 24 frames instead of 32
+  and the release for 20 instead of 39, with the same start and curve; the
+  dropped frames changed no pixel. 24 anim checks.
+
 ### Added
 
 - `anim.bend`: animated transitions on Kinera motions, kept by the host per
@@ -25,7 +37,7 @@ sibling AMAGE libraries; the set of versions tested together is listed in
 - `button_styled` with `ButtonLook`, and `view_styled` with `FieldStyle` and
   `look_style`: the static views drawn with a resolved look. `button` and
   `view` now go through them, with unchanged output.
-- `anim_tests.bend` (22 checks), `examples/anim_render.bend` (the filmstrip
+- `anim_tests.bend` (22 checks, now 24), `examples/anim_render.bend` (the filmstrip
   in `docs/anim-filmstrip.png`) and `examples/anim_bench.bend` (~1.3 µs per
   frame for the demo's button and field).
 

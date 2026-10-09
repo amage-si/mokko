@@ -194,7 +194,7 @@ host draws at (8 at 120 Hz).
 | Function | Contract |
 | --- | --- |
 | `button_anim()`, `field_anim()` | At rest: not hovered, pressed, focused or refused. |
-| `button_step(anim, prefs, state, id, now)` | Retargets each property to Kairo's `hovered`, `pressed` and `focused` for `id` at `now`. Idempotent while the state holds: call it every frame, or after every dispatch. |
+| `button_step(anim, prefs, theme, state, id, now)` | Retargets each property to Kairo's `hovered`, `pressed` and `focused` for `id` at `now`. Idempotent while the state holds: call it every frame, or after every dispatch. `theme` is the one the button is drawn with: its springs rest once no colour byte can change (see Visible rest). |
 | `field_step(anim, prefs, state, id, field, now)` | The focus ring to `focused`, the border to `message(field)` being set, and the blink clock restarted when the caret, anchor, scalar count or focus changed. |
 | `button(node, state, metrics, size, theme, anim, now)` | `M.button` drawn at `now`: same checks, primitive kinds and order, and semantic. |
 | `field_view(node, state, field, size, theme, placeholder, anim, prefs, now)` | `FL.view` drawn at `now`: same checks, primitive kinds and order, semantic and `EditState`. |
@@ -205,8 +205,8 @@ host draws at (8 at 120 Hz).
 ### Per frame
 
 ```bend
-b2 = A.button_step(b, prefs, kairo, button_id, now)
-f2 = A.field_step(fa, prefs, kairo, field_id, field, now)
+b2 = A.button_step(b, prefs, M.theme(), kairo, button_id, shown)
+f2 = A.field_step(fa, prefs, kairo, field_id, field, shown)
 button_view = A.button(button_node, kairo, metrics, 18.0, M.theme(), b2, now)
 field_view  = A.field_view(field_node, kairo, field, 20.0, FL.field_theme(), placeholder, f2, prefs, now)
 next = A.sooner(now, A.button_deadline(b2, now, 8), A.field_deadline(f2, prefs, now, 8))
@@ -215,8 +215,11 @@ next = A.sooner(now, A.button_deadline(b2, now, 8), A.field_deadline(f2, prefs, 
 ```
 
 Keep the stepped states (`b2`, `f2`) for the next frame. Step after every
-Kairo dispatch too, at the input's time, so a change starts when it
-happened. Every animated look stays inside the node's bounds (the sink and
+Kairo dispatch too, so a change starts when it happened. Step at `shown`,
+the time of the frame on screen (one frame interval before `now`; with
+Ankra, `frame_time(win) - frame_ms`), and draw at `now`: a motion
+retargeted at the time it is next drawn shows its start value there, a
+first frame that changes no pixel. Every animated look stays inside the node's bounds (the sink and
 the ring are insets), so while a control's deadline is `Some`, redrawing its
 bounds is the whole damage; Kairo needs no extra region.
 
@@ -224,9 +227,9 @@ bounds is the whole damage; Kairo needs no extra region.
 
 | Property | Curve | Asks for frames |
 | --- | --- | --- |
-| Button fill, normal to hover | critical spring, 200 ms response (90% at ~125 ms) | ~255 ms |
+| Button fill, normal to hover | critical spring, 200 ms response (90% at ~125 ms) | ~195 ms |
 | Button fill to pressed, and the 1-unit sink | 70 ms ease-out tween | 70 ms |
-| Release back | spring, 250 ms response, ratio 0.8 | ~310 ms |
+| Release back | spring, 250 ms response, ratio 0.8 | ~166 ms (until it passes 0) |
 | Focus ring (button and field): opacity 0 to 1, inset 6 to 2 | 150 ms ease-out tween | 150 ms |
 | Field border to the error colour | 150 ms ease-out tween | 150 ms |
 
@@ -238,9 +241,24 @@ the static ones, except that a held press keeps the 1-unit sink.
 Each property is a Kinera `Motion`, retargeted from its current value and
 velocity, so hover-out during the hover-in turns back with no jump; a
 property that changes curve (press in, release out) keeps value and velocity
-across the change. Rest thresholds are 0.004 of the 0..1 factor (at most one
-colour byte), not Kinera's 0.001, which would add ~40 frames of invisible
-change.
+across the change.
+
+### Visible rest
+
+A spring rests once what is left of it can change no byte of what is
+drawn. Kinera's settle test bounds every later value within `rest` of the
+target (`with_rest(s, rest, 1e6)`: the energy bound alone), so `rest` is
+the largest factor change that moves no colour byte by half a step (0.5
+over the steepest byte change per unit at either end of the pair's OKLab
+mix) and no edge by a quarter unit. With the default theme: hover
+(normal/hover, ~24 bytes per unit) rests at 0.021; the press factor
+(pressed against normal and hover, up to ~83 bytes per unit, and the 1-unit
+sink) at 0.006. Every factor is drawn clamped to 0..1, so a spring that has
+passed its target at 0 or 1 shows that end; it rests there once its way
+back across (its energy bound times the decay over a half cycle, 0 for
+critical springs) is below `rest`. The release's 1.5% overshoot below 0 is
+invisible and ends it as it crosses. Measured in the eco demo with a fixed
+0.004, 11 of 32 hover frames and 18 of 39 release frames changed no pixel.
 
 ### Caret blink
 

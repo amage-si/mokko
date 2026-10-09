@@ -80,14 +80,14 @@ def field_ps(v: Result<&2, &2, String, FL.FieldView>) -> +List<M.Primitive>:
 # Row 0: hover-in from rest at 1000.
 def hover_in(+m: M.Metrics, +t: U32) -> +List<M.Primitive>:
   +hov = KM.replay([K.PointerMove{60.0, middle(0)}], base(0))
-  ps_of(A.button(button_node(0), hov, m, 18.0, M.theme(), A.button_step(A.button_anim(), A.prefs(), hov, 2, 1000), (1000 + t : U32)))
+  ps_of(A.button(button_node(0), hov, m, 18.0, M.theme(), A.button_step(A.button_anim(), A.prefs(), M.theme(), hov, 2, 1000), (1000 + t : U32)))
 
 # Row 1: hover-in at 1000, out at 1060.
 def reversal(+m: M.Metrics, +t: U32) -> +List<M.Primitive>:
   +hov = KM.replay([K.PointerMove{60.0, middle(1)}], base(1))
   +out = KM.replay([K.PointerMove{500.0, middle(1)}], hov)
-  +a = A.button_step(A.button_anim(), A.prefs(), hov, 2, 1000)
-  +b = A.button_step(a, A.prefs(), out, 2, 1060)
+  +a = A.button_step(A.button_anim(), A.prefs(), M.theme(), hov, 2, 1000)
+  +b = A.button_step(a, A.prefs(), M.theme(), out, 2, 1060)
   +early = U32.is_lt(t, 60)
   ps_of(A.button(button_node(1), Bool.pick(K.State, early, hov, out), m, 18.0, M.theme(), Bool.pick(A.ButtonAnim, early, a, b), (1000 + t : U32)))
 
@@ -96,9 +96,9 @@ def press(+m: M.Metrics, +t: U32) -> +List<M.Primitive>:
   +hov = KM.replay([K.PointerMove{60.0, middle(2)}], base(2))
   +down = KM.replay([K.PointerDown{60.0, middle(2), 0}], hov)
   +up = KM.replay([K.PointerUp{60.0, middle(2), 0}], down)
-  +rested = A.button_step(A.button_anim(), A.prefs(), hov, 2, 0)
-  +a = A.button_step(rested, A.prefs(), down, 2, 1000)
-  +b = A.button_step(a, A.prefs(), up, 2, 1070)
+  +rested = A.button_step(A.button_anim(), A.prefs(), M.theme(), hov, 2, 0)
+  +a = A.button_step(rested, A.prefs(), M.theme(), down, 2, 1000)
+  +b = A.button_step(a, A.prefs(), M.theme(), up, 2, 1070)
   +early = U32.is_lt(t, 70)
   ps_of(A.button(button_node(2), Bool.pick(K.State, early, down, up), m, 18.0, M.theme(), Bool.pick(A.ButtonAnim, early, a, b), (1000 + t : U32)))
 

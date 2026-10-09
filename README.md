@@ -204,7 +204,7 @@ view(node, state, field, size, theme, placeholder) -> Result<&2, &2, String, Fie
 FieldView{view: View, edit: EditState}
 
 # anim.bend, per frame at `now`
-button_step(anim, prefs, state, id, now)        -> ButtonAnim
+button_step(anim, prefs, theme, state, id, now) -> ButtonAnim
 field_step(anim, prefs, state, id, field, now)  -> FieldAnim
 button(node, state, metrics, size, theme, anim, now) -> Result<&2, &2, String, View>
 field_view(node, state, field, size, theme, placeholder, anim, prefs, now) -> Result<&2, &2, String, FieldView>
