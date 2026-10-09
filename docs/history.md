@@ -53,6 +53,18 @@ These were synthetic events targeted at the window, not a test with a physical
 keyboard. Real window resize, window blur, IME, GPU presentation, and assistive
 technology were not part of this validation.
 
+## Text field, 2026-10-09
+
+The single-line text field (`field.bend`) was added on top of Kairo's editing
+module and Syllo's caret queries. Validation: 25 field checks with Liberation
+Sans, the existing 14 component and 5 model checks unchanged and passing, a
+scripted session (`examples/field.bend`), and an offline Chromi render of five
+states (`docs/field.png`), inspected by eye. `examples/field_bench.bend`
+measured, on one thread, about 66 µs per text-changing keystroke on a
+256-scalar line, about 2 µs per caret move, and about 8 µs per focused view
+(three runs, 131-134 ms per 2,000 keystrokes). The field was not run in a
+window or with a keyboard: Ankra's text input was still being built.
+
 ## Compiler aborts in the same round
 
 Four Bend compiler processes aborted (SIGABRT) during the round; their command

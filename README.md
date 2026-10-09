@@ -1,6 +1,6 @@
 # Mokko
 
-**Text and button components for the AMAGE UI ecosystem, in Bend 2.**
+**Text, button, and text-field components for the AMAGE UI ecosystem, in Bend 2.**
 
 Mokko turns controls into declarative draw primitives and semantics. A button
 or a text label takes its bounds from [Tessra](https://github.com/amage-si/tessra),
@@ -30,6 +30,7 @@ rasterized by Dithra, and composed by Chromi in an Ankra window.
   its bounds.
 - Kairo nodes for both (`button_node`, `text_node`) and the matching sizes for
   Tessra (`button_size`, `text_size`).
+- `field`: a single-line editable text field (see below).
 - Input validation: negative or non-finite metrics, an ascent above the height,
   invalid bounds, the wrong role, and font sizes outside `(0, 256]` are rejected.
 - `Semantic{id, role, label, bounds, enabled, focused, pressed, actions}` for
@@ -40,6 +41,23 @@ rasterized by Dithra, and composed by Chromi in an Ankra window.
 - `visual.bend`: the window host for that model, using Ankra, Chromi, the text
   pipeline, and Kairo's event adapter.
 
+### The text field
+
+![Five text-field states painted by Chromi: placeholder, caret, drag selection, refused U+20AC, scrolled text.](docs/field.png)
+
+`field.bend` keeps one `Field` per field node. The host feeds it every Kairo
+action (`TextDelivered`, `EditRequested`, `EditPointer`); editing rules come
+from Kairo's `edit.bend`, and the field lays out every candidate text with
+Syllo before committing it. It supports typing, selection with Shift and the
+pointer (click and drag), word and edge motions, Backspace/Delete by cluster
+or word, select all, copy, cut, and paste requests for the host's clipboard,
+and horizontal scrolling that keeps the caret visible. Text Syllo or the
+font cannot show is refused whole, never substituted or inserted in part:
+the border turns to the error colour and the field keeps a message naming the
+character, such as `Character U+20AC cannot be displayed`. Space and Enter
+never activate a field. The image above was painted without a window by
+`examples/field_render.bend`, with Chromi, Dithra, and Liberation Sans.
+
 Verification on the development machine:
 
 - **14 native checks** of primitives, state colors, text placement, focus,
@@ -47,6 +65,13 @@ Verification on the development machine:
 - **5 checks with the real Liberation Sans font** (`demo_tests.bend`): a
   deterministic count of 2, a clean duplicate release, the updated label,
   focus semantics, and relayout from 480 to 180 units wide.
+- **25 text-field checks with the real font** (`field_tests.bend`), driven
+  through Kairo: typing, the refusal of `€` with its message, a paste refused
+  whole, a line break and the 257th character refused, copy and cut requests,
+  a combining mark deleted with its base, a click hit, a drag selection, the
+  primitive order, scrolling that keeps the caret visible (also after Home,
+  End, a click on scrolled text, and deleting everything), and Space and
+  Enter never activating the field.
 - **Window run:** the final demo binary was driven once with 31 synthetic X11
   events sent only to its window, and all 31 arrived. It started at 0; a press
   dragged outside kept 0; a click gave 1; Tab showed the focus ring; Space with
@@ -64,8 +89,8 @@ names, because Bend imports are case-sensitive relative paths (`../Kairo/...`).
 | Target | Siblings needed |
 | --- | --- |
 | `main.bend`, `tests.bend`, `examples/button.bend` | Tessra, Kairo |
-| `demo.bend`, `demo_tests.bend` | + Syllo, Runika, Splina (Runika imports Splina) |
-| `visual.bend` (window demo) | + Chromi, Dithra, Ankra |
+| `demo.bend`, `demo_tests.bend`, `field.bend`, `field_tests.bend`, `examples/field*.bend` | + Syllo, Runika, Splina (Runika imports Splina) |
+| `visual.bend` (window demo), `examples/field_render.bend` | + Chromi, Dithra (and Ankra for the window) |
 
 ```sh
 for repo in tessra kairo mokko; do
@@ -110,7 +135,17 @@ bend demo_tests.bend -o build/demo_tests
 ./build/demo_tests --threads 2 --gpu off
 bend visual.bend -o build/visual
 ./build/visual --threads 2 --gpu off
+bend field_tests.bend -o build/field_tests
+./build/field_tests --threads 2 --gpu off
+bend examples/field.bend -o build/field
+./build/field --threads 2 --gpu off
 ```
+
+`examples/field.bend` replays a scripted session (typing, a refused `€`, a
+refused paste, Home, Shift+Ctrl+Right, copy, a drag, cut, paste) and prints
+the field after every step and the final primitives.
+`examples/field_render.bend` writes `build/field-render.ppm` (the image
+above), and `examples/field_bench.bend` times `feed` and `view`.
 
 Click the button, or use Tab, Space, and Enter. Close the window normally to
 exit; it also closes after 18,000 polls.
@@ -121,6 +156,12 @@ exit; it also closes after 18,000 polls.
 button(node, state, metrics, font_size, theme) -> Result<&2, &2, String, View>
 text(node, state, metrics, font_size, rgba)    -> Result<&2, &2, String, View>
 View{primitives: +List<Primitive>, semantic: Semantic}
+
+# field.bend
+field(font, size, text)                         -> Result<&2, &2, String, Field>
+feed(font, size, bounds, id, field, action)     -> Fed{field, dirty, request}
+view(node, state, field, size, theme, placeholder) -> Result<&2, &2, String, FieldView>
+FieldView{view: View, edit: EditState}
 ```
 
 Primitives are drawn in list order:
@@ -139,8 +180,17 @@ range, not that they match the text. Read the [API reference](docs/api.md).
 
 ## Current boundaries
 
-- Two components: text and button. No editable fields, scrolling, composite
-  layouts, or general text caches.
+- Three components: text, button, and a single-line text field. No
+  multi-line editing, scroll containers, composite layouts, or general text
+  caches.
+- The field accepts what Syllo lays out today: printable ASCII, Latin-1, and
+  its listed base + combining-mark pairs, up to 256 scalars by default. Other
+  characters (`€`, emoji, CJK) are refused with a message. There is no IME
+  preedit, no caret blink, and no undo. Text reaches it only through Kairo's
+  `TextInput`; the keyboard and clipboard come from the host.
+- The field is not in a window demo yet: the counter window does not host
+  it. It was checked with native tests, a scripted session, and an offline
+  Chromi render, not on screen with a keyboard.
 - The official runtime keeps a fixed window size and does not deliver resize,
   window focus, text input, or pointer leave. The model relayouts on `Resize`
   and is tested without a window, but real window resizing, window blur, and IME
@@ -166,15 +216,20 @@ The Bend checker and these tests are not a formal proof of the ecosystem.
 | [demo.bend](demo.bend) | Pure counter model: `init`, `update`, `view`, with Tessra layout and Syllo measurements. |
 | [visual.bend](visual.bend) | Window host for the counter: Ankra loop, Kairo adapter, Chromi drawing, cached text. |
 | [chromi_text.bend](chromi_text.bend) | Text adapter for the host: Syllo layout, Dithra masks, Chromi blending. |
+| [field.bend](field.bend) | The single-line text field: `field`, `feed`, `view`, node and size helpers. |
+| [field_tests.bend](field_tests.bend) | Text-field checks with the real font; no display needed. |
 | [tests.bend](tests.bend) | Native component checks; no display or font needed. |
 | [demo_tests.bend](demo_tests.bend) | Model checks with the real font; no display needed. |
 | [examples/button.bend](examples/button.bend) | One button's primitives and semantics, idle and focused. |
+| [examples/field.bend](examples/field.bend) | A scripted text-field session, printed step by step. |
+| [examples/field_render.bend](examples/field_render.bend) | Five text-field states painted by Chromi to a PPM, without a window. |
+| [examples/field_bench.bend](examples/field_bench.bend) | Times `feed` and `view` on a 256-scalar line. |
 | [docs/](docs/) | API reference and validation history. |
 
 ## Dependencies
 
-Tessra and Kairo for the components; Syllo, Runika, and Splina for the demo
-model; Chromi, Dithra, and Ankra for the window host; all beside Mokko. Also
+Tessra and Kairo for the button and text; plus Syllo, Runika, and Splina for
+the text field and the demo model; Chromi, Dithra, and Ankra for the window host; all beside Mokko. Also
 the Bend 2 toolchain with its `Base` library, X11/XWayland for the window, and
 the Liberation Sans font file. There is no hand-written native code and no
 FreeType, HarfBuzz, Skia, GTK, or SDL.
@@ -184,7 +239,8 @@ FreeType, HarfBuzz, Skia, GTK, or SDL.
 
 ## Direction
 
-Next: editable text fields, scrolling, composite layouts, shared text caches,
+Next: the text field in a window with Ankra's text input and clipboard,
+scrolling, composite layouts, shared text caches,
 partial repaint, and more components driven by real use. These are goals, not
 supported features.
 

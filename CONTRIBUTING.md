@@ -25,6 +25,10 @@ bend examples/button.bend -o build/button
 bend demo_tests.bend -o build/demo_tests
 ./build/demo_tests --threads 2 --gpu off
 bend visual.bend -o build/visual
+bend field_tests.bend -o build/field_tests
+./build/field_tests --threads 2 --gpu off
+bend examples/field.bend -o build/field
+./build/field --threads 2 --gpu off
 ```
 
 When a change affects visible behavior, run `./build/visual --threads 2 --gpu off`
