@@ -43,7 +43,7 @@ rasterized by Dithra, and composed by Chromi in an Ankra window.
 
 ### The text field
 
-![Five text-field states painted by Chromi: placeholder, caret, drag selection, refused U+20AC, scrolled text.](docs/field.png)
+![Five text-field states painted by Chromi: placeholder, caret, drag selection, refused U+2615, scrolled text.](docs/field.png)
 
 `field.bend` keeps one `Field` per field node. The host feeds it every Kairo
 action (`TextDelivered`, `EditRequested`, `EditPointer`); editing rules come
@@ -54,7 +54,7 @@ or word, select all, copy, cut, and paste requests for the host's clipboard,
 and horizontal scrolling that keeps the caret visible. Text Syllo or the
 font cannot show is refused whole, never substituted or inserted in part:
 the border turns to the error colour and the field keeps a message naming the
-character, such as `Character U+20AC cannot be displayed`. Space and Enter
+character, such as `Character U+2615 cannot be displayed`. Space and Enter
 never activate a field. The image above was painted without a window by
 `examples/field_render.bend`, with Chromi, Dithra, and Liberation Sans.
 
@@ -65,8 +65,8 @@ Verification on the development machine:
 - **5 checks with the real Liberation Sans font** (`demo_tests.bend`): a
   deterministic count of 2, a clean duplicate release, the updated label,
   focus semantics, and relayout from 480 to 180 units wide.
-- **25 text-field checks with the real font** (`field_tests.bend`), driven
-  through Kairo: typing, the refusal of `€` with its message, a paste refused
+- **26 text-field checks with the real font** (`field_tests.bend`), driven
+  through Kairo: typing, the refusal of `☕` with its message, a paste refused
   whole, a line break and the 257th character refused, copy and cut requests,
   a combining mark deleted with its base, a click hit, a drag selection, the
   primitive order, scrolling that keeps the caret visible (also after Home,
@@ -141,7 +141,7 @@ bend examples/field.bend -o build/field
 ./build/field --threads 2 --gpu off
 ```
 
-`examples/field.bend` replays a scripted session (typing, a refused `€`, a
+`examples/field.bend` replays a scripted session (typing, a refused `☕`, a
 refused paste, Home, Shift+Ctrl+Right, copy, a drag, cut, paste) and prints
 the field after every step and the final primitives.
 `examples/field_render.bend` writes `build/field-render.ppm` (the image
@@ -183,9 +183,12 @@ range, not that they match the text. Read the [API reference](docs/api.md).
 - Three components: text, button, and a single-line text field. No
   multi-line editing, scroll containers, composite layouts, or general text
   caches.
-- The field accepts what Syllo lays out today: printable ASCII, Latin-1, and
-  its listed base + combining-mark pairs, up to 256 scalars by default. Other
-  characters (`€`, emoji, CJK) are refused with a message. There is no IME
+- The field accepts what Syllo lays out today and the font has a glyph for:
+  printable ASCII, Latin-1 and its listed base + combining-mark pairs, Latin
+  Extended, Greek, Cyrillic, typographic punctuation, currency signs (`€`) and
+  common symbols, up to 256 scalars by default. Other characters (`☕`, emoji,
+  Hebrew, Arabic, CJK, a currency sign the font lacks such as `₹`) are refused
+  with a message. There is no IME
   preedit, no caret blink, and no undo. Text reaches it only through Kairo's
   `TextInput`; the keyboard and clipboard come from the host.
 - The field is not in a window demo yet: the counter window does not host

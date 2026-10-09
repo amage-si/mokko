@@ -107,7 +107,7 @@ FieldView{view: View, edit: EditState}
    new edit and its stops only if both succeed.
 3. A refusal keeps the previous text, caret, and selection, sets `refused` to
    a message, drops the request, and reports `dirty`. Messages are ASCII:
-   `Character U+20AC cannot be displayed` (from `SC.unsupported`),
+   `Character U+2615 cannot be displayed` (from `SC.unsupported`),
    `Control character U+0009 is not allowed`, `Line breaks are not allowed in
    this field`, `The text is limited to 256 characters`. The next accepted
    action clears it.

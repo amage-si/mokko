@@ -250,12 +250,12 @@ def main() -> IO(Unit):
     +typed : Session = run(List.append(&2, K.Input, click(100.0), [K.TextInput{"Olá"}]), font, idle)
     C.expect(has_text(typed, "Olá") && caret_is(typed, 3, 3) && is_dirty(typed), "click then typing inserts at the caret")
     C.expect(semantic_ok(view(typed)), "semantic: EditRole, the node name, focused, never pressed, no actions")
-    +euro : Session = run([K.TextInput{"€"}], font, rebase(typed))
-    C.expect(has_text(euro, "Olá") && message_is(euro, "Character U+20AC cannot be displayed") && is_dirty(euro),
-      "typing U+20AC is refused whole, with a message naming the character")
+    +euro : Session = run([K.TextInput{"☕"}], font, rebase(typed))
+    C.expect(has_text(euro, "Olá") && message_is(euro, "Character U+2615 cannot be displayed") && is_dirty(euro),
+      "typing U+2615 is refused whole, with a message naming the character")
     C.expect(U32.is_eq(border(primitives(view(euro))), 4031927039), "a refused edit draws the error border")
-    +pasted : Session = run([K.TextInput{"ab€cd"}], font, rebase(euro))
-    C.expect(has_text(pasted, "Olá") && caret_is(pasted, 3, 3) && message_is(pasted, "Character U+20AC cannot be displayed"),
+    +pasted : Session = run([K.TextInput{"ab☕cd"}], font, rebase(euro))
+    C.expect(has_text(pasted, "Olá") && caret_is(pasted, 3, 3) && message_is(pasted, "Character U+2615 cannot be displayed"),
       "a paste with one unsupported character is refused whole")
     +broken : Session = run([K.TextInput{"a\nb"}], font, rebase(pasted))
     C.expect(has_text(broken, "Olá") && message_is(broken, "Line breaks are not allowed in this field"), "a line break is refused")
@@ -292,5 +292,5 @@ def main() -> IO(Unit):
     C.expect(has_text(cleared, "") && F32.is_eq(origin(view(cleared)), 32.0), "deleting everything resets the scroll")
     +over : Session = run(List.append(&2, K.Input, click(100.0), [K.TextInput{"b"}]), font, begin(st, full))
     C.expect(message_is(over, "The text is limited to 256 characters") && Nat.is_eq(String.length(text(over)), 256n), "the 257th character is refused")
-    C.expect(failed_with(FL.field(font, 20.0, "café €"), "Character U+20AC cannot be displayed"), "a field cannot start with unsupported text")
-    IO.print("Mokko field: 25 tests passed with LiberationSans-Regular.ttf")
+    C.expect(failed_with(FL.field(font, 20.0, "café ☕"), "Character U+2615 cannot be displayed"), "a field cannot start with unsupported text")
+    IO.print("Mokko field: 26 tests passed with LiberationSans-Regular.ttf")

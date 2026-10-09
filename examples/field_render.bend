@@ -16,7 +16,7 @@ import ../../Runika/font.bend as F
 #   1. empty and unfocused: the placeholder;
 #   2. focused, caret at the end;
 #   3. a drag selection;
-#   4. "€" refused: the error border;
+#   4. "☕" refused: the error border;
 #   5. a long text scrolled to keep the caret at the right edge.
 # Each field is driven through Kairo like a host does. Fill and Stroke are
 # painted square (C.fill_rect, C.stroke_rect); a TextRun is laid out by
@@ -63,7 +63,7 @@ def scripted(+k: U32) -> +List<K.Input>:
     case 2:
       [K.PointerDown{32.0, middle(2), 0}, K.PointerMove{90.0, middle(2)}, K.PointerUp{90.0, middle(2), 0}]
     case 3:
-      [K.PointerDown{310.0, middle(3), 0}, K.PointerUp{310.0, middle(3), 0}, K.TextInput{"€"}]
+      [K.PointerDown{310.0, middle(3), 0}, K.PointerUp{310.0, middle(3), 0}, K.TextInput{"☕"}]
     case _:
       [K.PointerDown{100.0, middle(4), 0}, K.PointerUp{100.0, middle(4), 0}, K.Editing{K.MoveRight{K.ToEdge{}, False{}}}]
 
