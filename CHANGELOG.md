@@ -7,8 +7,7 @@ patch version (0.1.1) only fixes. Mokko is built from source together with its
 sibling AMAGE libraries; the set of versions tested together is listed in
 [eco-build's releases](https://github.com/amage-si/eco-build/tree/main/releases).
 
-## [Unreleased]
-
+## [0.2.0] - 2026-10-09
 ### Changed
 
 - `anim.bend`: springs rest once no byte of what they draw can change.
@@ -57,4 +56,5 @@ of AMAGE Eco 0.1.0.
 - The counter model (`demo.bend`) and its window host (`visual.bend`).
 - 14 native, 5 demo and 26 field checks.
 
+[0.2.0]: https://github.com/amage-si/mokko/releases/tag/v0.2.0
 [0.1.0]: https://github.com/amage-si/mokko/releases/tag/v0.1.0
