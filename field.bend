@@ -314,41 +314,62 @@ def selection(focused: Bool, +stops: List<&2, SC.Stop>, +caret: U32, +anchor: U3
 type FieldLook is Data:
   FieldLook{focused: Bool, refused: Bool}
 
-def primitives(+rect: G.Rect, look: FieldLook, +f: Field, +size: F32, colors: FieldTheme, placeholder: String) -> +List<M.Primitive>:
+# A field's resolved look: `focused` shows the selection and the caret,
+# `border` colours the 1-unit border, `ring` shows the 2-unit focus ring
+# inset by `ring_inset` in `ring_rgba`, and `caret_rgba` colours the caret.
+# The static field derives it from FieldLook (`look_style`); anim.bend
+# animates the colours, the ring and the caret's opacity.
+type FieldStyle is Data:
+  FieldStyle{focused: Bool, border: U32, ring: Bool, ring_inset: F32, ring_rgba: U32, caret_rgba: U32}
+
+def look_style(look: FieldLook, colors: FieldTheme) -> FieldStyle:
   FieldLook{+focused, refused} = look
+  FieldTheme{box, border, focus, ink, faint, band, caret, error} = colors
+  FieldStyle{focused, Bool.pick(U32, refused, error, border), focused, 2.0, focus, caret}
+
+def styled(+rect: G.Rect, style: FieldStyle, +f: Field, +size: F32, colors: FieldTheme, placeholder: String) -> +List<M.Primitive>:
+  FieldStyle{+focused, edge, ring, +ring_inset, ring_rgba, caret_rgba} = style
   Field{KE.Edit{text, +count, +caret, +anchor}, +stops, M.Metrics{tw, +lh, +asc}, sc, r} = f
-  FieldTheme{box, border, focus, ink, faint, band, caret_rgba, error} = colors
+  FieldTheme{box, border, focus, ink, faint, band, caret_theme, error} = colors
   +left = text_left(rect)
   +top = text_top(rect, lh)
   +aw = area_width(rect)
   +origin = (left - scroll_of(f, aw) : F32)
   +empty = U32.is_eq(count, 0)
   +right = (left + aw : F32)
-  ring = {M.Stroke{G.inset(rect, G.Insets{2.0, 2.0, 2.0, 2.0}), 2.0, focus} : M.Primitive}
-  +rings = Bool.pick(+List<M.Primitive>, focused, [ring], Nil{})
+  stroke = {M.Stroke{G.inset(rect, G.Insets{ring_inset, ring_inset, ring_inset, ring_inset}), 2.0, ring_rgba} : M.Primitive}
+  +rings = Bool.pick(+List<M.Primitive>, ring, [stroke], Nil{})
   cursor = {M.Fill{G.Rect{(origin + SC.caret_x(stops, caret) - 1.0 : F32), top, 2.0, lh}, caret_rgba} : M.Primitive}
   +after = Bool.pick(+List<M.Primitive>, focused, Con{cursor, rings}, rings)
   run = {M.TextRun{origin, top, (top + asc : F32), Bool.pick(String, empty, placeholder, text), size, G.inset(rect, G.Insets{padding(), 2.0, padding(), 2.0}), Bool.pick(U32, empty, faint, ink)} : M.Primitive}
   +marked = selection(focused, stops, caret, anchor, lh, origin, left, right, top, band, Con{run, after})
-  Con{M.Fill{rect, box}, Con{M.Stroke{rect, 1.0, Bool.pick(U32, refused, error, border)}, marked}}
+  Con{M.Fill{rect, box}, Con{M.Stroke{rect, 1.0, edge}, marked}}
+
+def primitives(+rect: G.Rect, look: FieldLook, +f: Field, +size: F32, +colors: FieldTheme, placeholder: String) -> +List<M.Primitive>:
+  styled(rect, look_style(look, colors), f, size, colors, placeholder)
 
 def edit_state(+id: U32, +rect: G.Rect, +f: Field, placeholder: String) -> EditState:
   Field{KE.Edit{text, n, caret, anchor}, stops, M.Metrics{tw, +lh, asc}, sc, r} = f
   EditState{id, text, caret, anchor, placeholder, (text_left(rect) - scroll_of(f, area_width(rect)) : F32), text_top(rect, lh), lh, stops}
 
-def view_checked(ok: Bool, +node: K.Node, +state: K.State, +f: Field, +size: F32, colors: FieldTheme, +placeholder: String) -> Result<&2, &2, String, FieldView>:
+def view_styled.checked(ok: Bool, +node: K.Node, +state: K.State, +f: Field, +size: F32, colors: FieldTheme, +placeholder: String, style: FieldStyle) -> Result<&2, &2, String, FieldView>:
   match ok:
     case False{}:
       Fail{"Mokko: invalid text field node or font size"}
     case True{}:
       K.Node{+id, +rect, label, role, +enabled, focusable} = node
-      +focused = D.focused(state, id)
-      ps = primitives(rect, FieldLook{focused, is_refused(message(f))}, f, size, colors, placeholder)
-      semantic = {M.Semantic{id, K.EditRole{}, label, rect, enabled, focused, False{}, Nil{}} : M.Semantic}
+      ps = styled(rect, style, f, size, colors, placeholder)
+      semantic = {M.Semantic{id, K.EditRole{}, label, rect, enabled, D.focused(state, id), False{}, Nil{}} : M.Semantic}
       Done{FieldView{M.View{ps, semantic}, edit_state(id, rect, f, placeholder)}}
 
-# The field's primitives (see the order above), its semantic (EditRole, the
-# node label as name, never pressed, no actions) and its EditState.
-def view(+node: K.Node, state: K.State, f: Field, +size: F32, colors: FieldTheme, placeholder: String) -> Result<&2, &2, String, FieldView>:
+# The field with a look the caller resolved (anim.bend's animated field);
+# the same checks, primitive order, semantic and EditState as `view`.
+def view_styled(+node: K.Node, state: K.State, f: Field, +size: F32, colors: FieldTheme, placeholder: String, style: FieldStyle) -> Result<&2, &2, String, FieldView>:
   K.Node{id, rect, label, +role, e, fo} = node
-  view_checked(N.valid(node) && N.is_edit(role) && (size > 0.0 : F32) && (size <= 256.0 : F32), node, state, f, size, colors, placeholder)
+  view_styled.checked(N.valid(node) && N.is_edit(role) && (size > 0.0 : F32) && (size <= 256.0 : F32), node, state, f, size, colors, placeholder, style)
+
+# The field's primitives (see the order above), its semantic (EditRole, the
+# node name, never pressed, no actions) and its EditState.
+def view(+node: K.Node, +state: K.State, +f: Field, +size: F32, +colors: FieldTheme, placeholder: String) -> Result<&2, &2, String, FieldView>:
+  K.Node{+id, rect, label, role, e, fo} = node
+  view_styled(node, state, f, size, colors, placeholder, look_style(FieldLook{D.focused(state, id), is_refused(message(f))}, colors))

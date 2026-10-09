@@ -51,18 +51,34 @@ def semantic(node: K.Node, +state: K.State) -> Semantic:
   actions = Bool.pick(+List<SemanticAction>, N.is_button(role) && enabled, [Activate{}], Nil{})
   Semantic{id, role, label, rect, enabled, D.focused(state, id), D.pressed(state, id), actions}
 
-def button_rect(+rect: G.Rect, label: String, +enabled: Bool, hovered: Bool, pressed: Bool, focused: Bool, mw: F32, mh: F32, ascent: F32, size: F32, colors: Theme) -> +List<Primitive>:
+# A button's resolved look: the background and label colours, how far the
+# background fill is inset from the bounds (the press "sink"), and the
+# 2-unit focus ring, drawn when `ring` is True, inset by `ring_inset` in
+# `ring_rgba`. The static button is `ButtonLook{bg, fg, 0.0, focused, 2.0,
+# focus}`; anim.bend animates every field.
+type ButtonLook is Data:
+  ButtonLook{bg: U32, fg: U32, sink: F32, ring: Bool, ring_inset: F32, ring_rgba: U32}
+
+def even(+d: F32) -> G.Insets:
+  G.Insets{d, d, d, d}
+
+# Fill, the focus ring when shown, then the centred label.
+def button_drawn(+rect: G.Rect, label: String, look: ButtonLook, mw: F32, mh: F32, ascent: F32, size: F32) -> +List<Primitive>:
   G.Rect{x, y, +w, +h} = rect
-  Theme{normal, hover, down, disabled, text, muted, focus} = colors
-  bg = Bool.pick(U32, enabled, Bool.pick(U32, pressed, down, Bool.pick(U32, hovered, hover, normal)), disabled)
-  fg = Bool.pick(U32, enabled, text, muted)
+  ButtonLook{bg, fg, sink, ring, ring_inset, ring_rgba} = look
   +tx = (x + F32.max(0.0, (w - mw : F32)) / 2.0 : F32)
   +ty = (y + F32.max(0.0, (h - mh : F32)) / 2.0 : F32)
   clip = G.inset(rect, G.Insets{8.0, 4.0, 8.0, 4.0})
   run = {TextRun{tx, ty, (ty + ascent : F32), label, size, clip, fg} : Primitive}
   +tail = {Con{run, Nil{}} : +List<Primitive>}
-  ring = {Stroke{G.inset(rect, G.Insets{2.0, 2.0, 2.0, 2.0}), 2.0, focus} : Primitive}
-  Con{Fill{rect, bg}, Bool.pick(+List<Primitive>, focused, Con{ring, tail}, tail)}
+  stroke = {Stroke{G.inset(rect, even(ring_inset)), 2.0, ring_rgba} : Primitive}
+  Con{Fill{G.inset(rect, even(sink)), bg}, Bool.pick(+List<Primitive>, ring, Con{stroke, tail}, tail)}
+
+def button_rect(+rect: G.Rect, label: String, +enabled: Bool, hovered: Bool, pressed: Bool, focused: Bool, mw: F32, mh: F32, ascent: F32, size: F32, colors: Theme) -> +List<Primitive>:
+  Theme{normal, hover, down, disabled, text, muted, focus} = colors
+  bg = Bool.pick(U32, enabled, Bool.pick(U32, pressed, down, Bool.pick(U32, hovered, hover, normal)), disabled)
+  fg = Bool.pick(U32, enabled, text, muted)
+  button_drawn(rect, label, ButtonLook{bg, fg, 0.0, focused, 2.0, focus}, mw, mh, ascent, size)
 
 def button_primitives(node: K.Node, +state: K.State, metrics: Metrics, size: F32, colors: Theme) -> +List<Primitive>:
   K.Node{+id, +rect, label, role, +enabled, focusable} = node
@@ -97,3 +113,18 @@ def text_checked(valid: Bool, +node: K.Node, state: K.State, metrics: Metrics, s
 def text(+node: K.Node, state: K.State, +metrics: Metrics, +size: F32, rgba: U32) -> Result<&2, &2, String, View>:
   K.Node{id, rect, label, role, e, f} = node
   text_checked(N.valid(node) && Bool.not(N.is_button(role)) && valid_metrics(metrics) && (size > 0.0 : F32) && (size <= 256.0 : F32), node, state, metrics, size, rgba)
+
+def button_styled.checked(valid: Bool, +node: K.Node, +state: K.State, metrics: Metrics, size: F32, look: ButtonLook) -> Result<&2, &2, String, View>:
+  match valid:
+    case False{}:
+      Fail{"Mokko: invalid button, metrics or font size"}
+    case True{}:
+      K.Node{id, rect, label, role, enabled, focusable} = node
+      Metrics{mw, mh, ascent} = metrics
+      Done{View{button_drawn(rect, label, look, mw, mh, ascent, size), semantic(node, state)}}
+
+# The button with a look the caller resolved (anim.bend's animated button);
+# the same checks, primitive order and semantic as `button`.
+def button_styled(+node: K.Node, state: K.State, +metrics: Metrics, +size: F32, look: ButtonLook) -> Result<&2, &2, String, View>:
+  K.Node{id, rect, label, role, e, f} = node
+  button_styled.checked(N.valid(node) && N.is_button(role) && valid_metrics(metrics) && (size > 0.0 : F32) && (size <= 256.0 : F32), node, state, metrics, size, look)
