@@ -9,7 +9,7 @@ measurements from the caller, and returns `Fill`, `Stroke`, and `TextRun`
 primitives plus a `Semantic` record for accessibility. Mokko does not own a
 window, a renderer, or a font rasterizer.
 
-**Status:** early implementation, tested with **Bend 2.0.35** on Linux
+**Status:** early implementation, tested with **Bend 2.0.37** on Linux
 (Hyprland with X11/XWayland). The first priority is a polished, reliable
 experience on the development Linux machine. Compatibility layers will follow
 proven progress.
